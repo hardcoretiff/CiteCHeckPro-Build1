@@ -56,6 +56,19 @@ export interface AnalysisStats {
   pending: number;
 }
 
+export interface ReportJournalEntry {
+  id: string;
+  timestamp: number;
+  documentTitle: string;
+  stats: AnalysisStats;
+  findings: Array<{
+    text: string;
+    status: string;
+    caseName?: string;
+    legalStatus?: string;
+  }>;
+}
+
 export type CitationFilter = 'all' | 'issues' | 'valid' | 'superseded';
 
 export type SortOption = 'original' | 'name' | 'status' | 'confidence';
