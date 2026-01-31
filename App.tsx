@@ -3,7 +3,7 @@ import {
   ShieldCheck, FileText, Settings, Loader2, X, 
   PanelRightClose, PanelRightOpen, Globe, Scale, AlertCircle, 
   History, BookOpen, Search, Key, Download,
-  ChevronUp, ChevronDown, Play, CheckCircle2, AlertTriangle, Clock
+  ChevronUp, ChevronDown, Play, CheckCircle2, AlertTriangle, Clock, User, LogOut, ChevronRight, Menu
 } from 'lucide-react';
 import { Citation, AnalysisStats, CitationFilter, ReportJournalEntry } from './types';
 import { extractCitations, highlightText } from './services/citationService';
@@ -107,22 +107,22 @@ const App: React.FC = () => {
     setJournal(prev => [entry, ...prev].slice(0, 50));
   };
 
-  const handleApplySuperseding = (id: string, newCitation: string) => {
+  const handleApplySuperseding = (id: string, newCitation: string, newCaseName: string) => {
     const cite = citations.find(c => c.id === id);
     if (!cite) return;
     const before = inputText.substring(0, cite.startIndex);
     const after = inputText.substring(cite.endIndex);
-    setInputText(before + newCitation + after);
+    const updatedText = before + newCitation + after;
+    setInputText(updatedText);
+    setCitations(prev => prev.map(c => c.id === id ? { ...c, status: 'valid', caseName: newCaseName, legalStatus: 'good' } : c));
   };
 
   const runVerification = async () => {
     if (citations.length === 0) return;
     setIsAnalyzing(true);
     setIsInspectionPanelOpen(true);
-
     const promises = citations.map(async (cite) => {
       if (cite.status !== 'pending') return cite;
-
       setCitations(p => p.map(c => c.id === cite.id ? { ...c, status: 'checking' } : c));
       try {
         const result = await verifyCitationWithGemini(cite.originalText, 'standard');
@@ -130,7 +130,6 @@ const App: React.FC = () => {
         if (courtListenerKey && result.isValid) {
           clData = await lookupCitationOnCourtListener(cite.originalText, courtListenerKey);
         }
-
         const updatedCite: Citation = {
           ...cite,
           status: result.isValid ? 'valid' : 'hallucination',
@@ -144,7 +143,6 @@ const App: React.FC = () => {
           sources: clData?.absolute_url ? [{ uri: clData.absolute_url, title: 'Auth Opinion' }, ...(result.sources || [])] : result.sources,
           isCourtListenerVerified: !!clData?.found
         };
-
         setCitations(p => p.map(c => c.id === cite.id ? updatedCite : c));
         return updatedCite;
       } catch (e) {
@@ -153,7 +151,6 @@ const App: React.FC = () => {
         return errorCite;
       }
     });
-
     const results = await Promise.all(promises);
     setIsAnalyzing(false);
     archiveAnalysis(results);
@@ -168,37 +165,84 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden">
-      <aside className={`${isSidebarCollapsed ? 'w-0 lg:w-16' : 'w-64'} bg-gray-900 text-white transition-all duration-300 flex flex-col z-20 overflow-hidden`}>
+      {/* Sidebar - Mobile Responsive Overlay Logic */}
+      <div 
+        className={`fixed inset-0 bg-gray-900/40 z-50 lg:hidden transition-opacity duration-300 ${isSidebarCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        onClick={() => setIsSidebarCollapsed(true)}
+      />
+      <aside className={`
+        fixed lg:relative z-50 lg:z-20 h-full
+        ${isSidebarCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-16' : 'translate-x-0 w-64'} 
+        bg-gray-900 text-white transition-all duration-300 flex flex-col overflow-hidden
+      `}>
         <div className="p-4 flex items-center justify-between border-b border-gray-800 min-w-[256px] lg:min-w-0">
           {!isSidebarCollapsed && <div className="flex items-center gap-2 font-black text-lg tracking-tighter text-blue-400"><ShieldCheck /> LEXICITE 360</div>}
           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-1 hover:bg-gray-800 rounded">
             {isSidebarCollapsed ? <PanelRightOpen size={18} /> : <PanelRightClose size={18} />}
           </button>
         </div>
+        
         <nav className="flex-1 p-2 space-y-1">
-          <button className="w-full flex items-center gap-3 p-3 bg-blue-600 rounded-lg font-bold text-sm"><FileText size={18} /> {!isSidebarCollapsed && "Active Editor"}</button>
-          <button onClick={() => setShowJournal(true)} className="w-full flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg font-bold text-sm transition-colors"><BookOpen size={18} /> {!isSidebarCollapsed && "Case History"}</button>
-          <button onClick={() => setShowSettings(true)} className="w-full flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg font-bold text-sm transition-colors"><Settings size={18} /> {!isSidebarCollapsed && "Engine Config"}</button>
+          <button onClick={() => setIsSidebarCollapsed(window.innerWidth < 1024)} className="w-full flex items-center gap-3 p-3 bg-blue-600 rounded-lg font-bold text-sm"><FileText size={18} /> {!isSidebarCollapsed && "Active Editor"}</button>
+          <button onClick={() => { setShowJournal(true); setIsSidebarCollapsed(window.innerWidth < 1024); }} className="w-full flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg font-bold text-sm transition-colors"><BookOpen size={18} /> {!isSidebarCollapsed && "Case History"}</button>
+          <button onClick={() => { setShowSettings(true); setIsSidebarCollapsed(window.innerWidth < 1024); }} className="w-full flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg font-bold text-sm transition-colors"><Settings size={18} /> {!isSidebarCollapsed && "Engine Config"}</button>
         </nav>
+
+        {/* ACCOUNT INFO PANEL */}
+        <div className="mt-auto p-3 border-t border-gray-800">
+          <div className={`flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-gray-800 cursor-pointer group`}>
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white shrink-0 relative shadow-inner">
+              SJ
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-gray-900 rounded-full" />
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-black text-white truncate flex items-center gap-1">
+                  Sarah Jenkins
+                  <div className="px-1 bg-blue-500/20 text-blue-400 text-[8px] rounded uppercase tracking-tighter">Pro</div>
+                </div>
+                <div className="text-[10px] text-gray-400 truncate font-medium">Jenkins & Assoc. LLP</div>
+              </div>
+            )}
+            {!isSidebarCollapsed && <ChevronRight size={14} className="text-gray-600 group-hover:text-white" />}
+          </div>
+        </div>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 z-10 shadow-sm gap-2 shrink-0">
-          <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-2 lg:hidden">
+            <button 
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+            >
+              <Menu size={20} />
+            </button>
+          </div>
+          
+          <div className="flex-1 min-w-0 text-left ml-2 lg:ml-0">
             <input 
               value={documentTitle} 
               onChange={(e) => setDocumentTitle(e.target.value)}
               className="font-bold text-gray-800 border-none bg-transparent focus:ring-0 p-0 text-sm md:text-base w-full truncate"
             />
           </div>
+
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+              title="Engine Config"
+            >
+              <Settings size={20} />
+            </button>
             <button 
               onClick={runVerification}
               disabled={isAnalyzing || citations.length === 0}
-              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 transition-all bg-blue-600 text-white shadow-lg hover:bg-blue-700 disabled:opacity-50`}
+              className={`px-3 py-2 md:px-4 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 transition-all bg-blue-600 text-white shadow-lg hover:bg-blue-700 disabled:opacity-50`}
             >
               {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Scale size={16} />}
-              <span>{isAnalyzing ? "Verifying..." : "Verify All"}</span>
+              <span className="max-sm:hidden">{isAnalyzing ? "Verifying..." : "Verify All"}</span>
             </button>
           </div>
         </header>

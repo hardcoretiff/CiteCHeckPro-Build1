@@ -8,7 +8,7 @@ import {
 
 interface CitationCardProps {
   citation: Citation;
-  onApplySuperseding?: (id: string, newCitation: string) => void;
+  onApplySuperseding?: (id: string, newCitation: string, newCaseName: string) => void;
 }
 
 const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySuperseding }) => {
@@ -60,6 +60,9 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
     }
   };
 
+  // Only show superseding UI if there's a correction available AND the current citation is problematic
+  const showSuperseding = !!citation.supersedingCase && (isObsolete || citation.status === 'hallucination');
+
   return (
     <div className={`p-4 rounded-lg border transition-all duration-300 group ${getStatusStyles()}`}>
       <div className="flex justify-between items-start gap-2 mb-2">
@@ -109,7 +112,7 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
             </div>
           )}
 
-          {citation.supersedingCase && (
+          {showSuperseding && (
             <div className="p-3 bg-red-600 text-white rounded-xl shadow-lg space-y-3 mt-4">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
                 <ShieldAlert size={12} className="text-white animate-pulse" />
@@ -118,26 +121,26 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
               
               <div className="space-y-1">
                 <div className="text-[10px] font-bold leading-tight line-clamp-2">
-                  {citation.supersedingCase.name}
+                  {citation.supersedingCase!.name}
                 </div>
                 <div className="font-mono text-[9px] opacity-80">
-                  {citation.supersedingCase.citation}
+                  {citation.supersedingCase!.citation}
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <button 
-                  onClick={() => onApplySuperseding?.(citation.id, citation.supersedingCase!.citation)}
-                  className="w-full bg-white text-red-700 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-tight flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
-                >
-                  <ArrowRight size={14} /> Apply Correct Citation
-                </button>
-                
-                <button 
                   onClick={handleViewDetails}
                   className="w-full bg-red-700/50 text-white border border-red-400/30 px-3 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 hover:bg-red-700/80 transition-colors"
                 >
                   <ExternalLink size={14} /> View superseding case details
+                </button>
+
+                <button 
+                  onClick={() => onApplySuperseding?.(citation.id, citation.supersedingCase!.citation, citation.supersedingCase!.name)}
+                  className="w-full bg-white text-red-700 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-tight flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors shadow-sm"
+                >
+                  <ArrowRight size={14} /> Apply Correct Citation
                 </button>
               </div>
             </div>
