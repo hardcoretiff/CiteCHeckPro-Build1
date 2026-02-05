@@ -1,4 +1,5 @@
 import { CourtListenerLookupResult } from '../types';
+import { inferAreaOfLaw } from './geminiService';
 
 /**
  * Performs a targeted lookup of a legal citation on the CourtListener API.
@@ -7,6 +8,8 @@ export const lookupCitationOnCourtListener = async (
   citation: string,
   apiKey: string
 ): Promise<CourtListenerLookupResult> => {
+  const inferredArea = inferAreaOfLaw(citation);
+  
   if (!apiKey || apiKey.trim() === '') {
     return {
       found: false,
@@ -14,6 +17,7 @@ export const lookupCitationOnCourtListener = async (
       citation: null,
       id: null,
       absolute_url: null,
+      areaOfLaw: inferredArea,
       error: 'Authority Key missing. Please set your CourtListener Token in Engine Config.'
     };
   }
@@ -38,6 +42,7 @@ export const lookupCitationOnCourtListener = async (
         citation: null,
         id: null,
         absolute_url: null,
+        areaOfLaw: inferredArea,
         error: 'Authentication failed: The provided CourtListener token is invalid.'
       };
     }
@@ -55,11 +60,19 @@ export const lookupCitationOnCourtListener = async (
         caseName: topResult.case_name || topResult.citation_string,
         citation: topResult.citation_string,
         id: topResult.id,
-        absolute_url: topResult.absolute_url ? `https://www.courtlistener.com${topResult.absolute_url}` : null
+        absolute_url: topResult.absolute_url ? `https://www.courtlistener.com${topResult.absolute_url}` : null,
+        areaOfLaw: inferredArea // We always attach inferred area since CL API doesn't usually provide it directly in this endpoint
       };
     }
 
-    return { found: false, caseName: null, citation: null, id: null, absolute_url: null };
+    return { 
+      found: false, 
+      caseName: null, 
+      citation: null, 
+      id: null, 
+      absolute_url: null,
+      areaOfLaw: inferredArea 
+    };
 
   } catch (error: any) {
     console.error('CourtListener Lookup Failure:', error);
@@ -69,6 +82,7 @@ export const lookupCitationOnCourtListener = async (
       citation: null,
       id: null,
       absolute_url: null,
+      areaOfLaw: inferredArea,
       error: 'Network error communicating with the legal database.'
     };
   }

@@ -1,5 +1,3 @@
-
-
 export interface CitationSource {
   uri: string;
   title: string;
@@ -52,7 +50,25 @@ export interface CourtListenerLookupResult {
   citation: string | null;
   id: number | null;
   absolute_url: string | null;
+  areaOfLaw?: string;
   error?: string;
+}
+
+export interface HistoricalEvent {
+  year: string;
+  caseName: string;
+  summary: string;
+  citation?: string;
+}
+
+export interface HistoricalContextData {
+  query: string;
+  era: string;
+  topic: string;
+  brief: string;
+  keyForces: string[];
+  relatedCases: string[];
+  timeline: HistoricalEvent[];
 }
 
 export interface AnalysisStats {
@@ -75,7 +91,6 @@ export interface ReportJournalEntry {
     legalStatus?: string;
     areaOfLaw?: string;
   }>;
-  // Added properties to match the initialization and usage in App.tsx
   status: string;
   thumbnail?: string;
 }
@@ -84,5 +99,4 @@ export type CitationFilter = 'all' | 'issues' | 'valid' | 'superseded';
 export type SortOption = 'original' | 'name' | 'status' | 'confidence';
 export type VerificationMode = 'standard' | 'research';
 
-// ViewState defines the possible views/routes for the main application navigation
-export type ViewState = 'library' | 'editor' | 'recent' | 'starred' | 'settings';
+export type ViewState = 'library' | 'editor' | 'recent' | 'starred' | 'settings' | 'historical';

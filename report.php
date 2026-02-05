@@ -2,10 +2,9 @@
 /**
  * LexiCite 360 Autopilot Sync Bridge
  * Drop this file into your cPanel public_html directory.
- * It will automatically store analysis results into 'case_study_data.log'.
+ * It handles both single citation verifications and full dataset reports.
  */
 
-// Allow cross-origin requests if needed for testing, though normally served from same domain
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -15,33 +14,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Read the raw JSON payload from the request body
     $json = file_get_contents('php://input');
     
     if ($json) {
         $data = json_decode($json, true);
         
         if ($data) {
-            // Prepare a pretty-printed, timestamped log entry
             $timestamp = date('Y-m-d H:i:s');
-            $logEntry = "========================================\n";
-            $logEntry .= "TIMESTAMP: $timestamp\n";
-            $logEntry .= "DOCUMENT: " . ($data['documentTitle'] ?? 'Untitled') . "\n";
-            $logEntry .= "ID: " . ($data['id'] ?? 'N/A') . "\n";
-            $logEntry .= "STATS: " . json_encode($data['stats']) . "\n";
-            $logEntry .= "FINDINGS:\n";
+            $logEntry = "============================================================\n";
             
-            foreach ($data['findings'] as $finding) {
-                $lawArea = ($finding['areaOfLaw'] ?? 'Unspecified');
-                $logEntry .= " - [" . strtoupper($finding['status']) . "] " . $finding['text'] . " (" . ($finding['caseName'] ?? 'Unknown Case') . ") | AREA: $lawArea\n";
+            if (isset($data['type']) && $data['type'] === 'FULL_DATASET_REPORT') {
+                // Batch/Full Dataset Report
+                $logEntry .= "TYPE: AUTOMATED FULL DATASET REPORT\n";
+                $logEntry .= "TIMESTAMP: $timestamp\n";
+                $logEntry .= "JOURNAL COUNT: " . ($data['journalCount'] ?? 0) . "\n";
+                $logEntry .= "------------------------------------------------------------\n";
+                
+                if (isset($data['data']) && is_array($data['data'])) {
+                    foreach ($data['data'] as $entry) {
+                        $logEntry .= "DOC: " . ($entry['documentTitle'] ?? 'Untitled') . "\n";
+                        $logEntry .= "STATS: " . json_encode($entry['stats'] ?? []) . "\n";
+                        $logEntry .= "DATE: " . date('Y-m-d H:i:s', ($entry['timestamp'] / 1000)) . "\n\n";
+                    }
+                }
+            } else {
+                // Single Entry Report
+                $logEntry .= "TYPE: SINGLE VERIFICATION REPORT\n";
+                $logEntry .= "TIMESTAMP: $timestamp\n";
+                $logEntry .= "DOCUMENT: " . ($data['documentTitle'] ?? 'Untitled') . "\n";
+                $logEntry .= "ID: " . ($data['id'] ?? 'N/A') . "\n";
+                $logEntry .= "STATS: " . json_encode($data['stats'] ?? []) . "\n";
+                $logEntry .= "FINDINGS:\n";
+                
+                if (isset($data['findings']) && is_array($data['findings'])) {
+                    foreach ($data['findings'] as $finding) {
+                        $lawArea = ($finding['areaOfLaw'] ?? 'Unspecified');
+                        $logEntry .= " - [" . strtoupper($finding['status'] ?? 'UNKNOWN') . "] " . ($finding['text'] ?? 'N/A') . " (" . ($finding['caseName'] ?? 'Unknown Case') . ") | AREA: $lawArea\n";
+                    }
+                }
             }
             
-            $logEntry .= "========================================\n\n";
+            $logEntry .= "============================================================\n\n";
             
-            // Append the log entry to case_study_data.log
+            // Log to case_study_data.log
             file_put_contents('case_study_data.log', $logEntry, FILE_APPEND | LOCK_EX);
             
-            echo json_encode(['status' => 'success', 'message' => 'Report synced to autopilot log.']);
+            echo json_encode(['status' => 'success', 'message' => 'Automated report synced to server logs.']);
         } else {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Invalid JSON payload.']);

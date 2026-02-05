@@ -1,16 +1,17 @@
 import React from 'react';
 import { Citation } from '../types';
 import { 
-  ExternalLink, Globe, Wand2, History, Check, Sparkles, Scale, Briefcase, Info
+  ExternalLink, Wand2, Sparkles, CheckCircle, Gavel
 } from 'lucide-react';
 
 interface CitationCardProps {
   citation: Citation;
   onApplySuperseding?: (id: string, newCitation: string, newCaseName: string) => void;
+  onAcceptCorrection?: (id: string) => void;
   fullText?: string;
 }
 
-const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySuperseding, fullText }) => {
+const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySuperseding, onAcceptCorrection, fullText }) => {
   const isObsolete = citation.legalStatus === 'overruled' || citation.legalStatus === 'superseded' || citation.legalStatus === 'retracted';
   const isError = citation.status === 'error';
   
@@ -30,31 +31,20 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
   };
 
   const config = getStatusConfig();
-
-  const getContextSnippets = () => {
-    if (!fullText) return null;
-    const padding = 60;
-    const start = Math.max(0, citation.startIndex - padding);
-    const end = Math.min(fullText.length, citation.endIndex + padding);
-    const before = fullText.substring(start, citation.startIndex);
-    const after = fullText.substring(citation.endIndex, end);
-    
-    return {
-      draft: (
-        <>{before}<span className="text-red-600 bg-red-50 font-bold">{citation.originalText}</span>{after}</>
-      ),
-      preview: citation.supersedingCase ? (
-        <>{before}<span className="text-green-600 bg-green-50 font-bold">{citation.supersedingCase.citation}</span>{after}</>
-      ) : null
-    };
-  };
-
-  const snippets = getContextSnippets();
   const showSuperseding = !!citation.supersedingCase && (isObsolete || citation.status === 'hallucination');
+
+  const AreaOfLawBadge = () => (
+    citation.areaOfLaw ? (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f39200]/10 text-[#f39200] rounded-lg text-[10px] font-black uppercase tracking-widest border border-[#f39200]/20 shadow-sm animate-in fade-in zoom-in duration-300">
+        <Gavel size={14} className="opacity-70" />
+        {citation.areaOfLaw}
+      </div>
+    ) : null
+  );
 
   if (showSuperseding) {
     return (
-      <div className="bg-white rounded-3xl border border-[#e6edf4] overflow-hidden shadow-sm mb-4">
+      <div className="bg-white rounded-3xl border border-[#e6edf4] overflow-hidden shadow-sm mb-4 animate-in fade-in slide-in-from-top-2">
         <div className="p-5 border-b border-[#e6edf4] bg-[#f6f8fb] flex items-center justify-between">
           <span className="text-[11px] font-black uppercase tracking-widest text-[#0b3a6f]">Precedent Replacement</span>
           <div className="flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-600 rounded-full text-[9px] font-bold uppercase">
@@ -66,13 +56,15 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100 text-center">
               <span className="text-[9px] font-black text-red-500 uppercase tracking-widest block mb-1">Outdated</span>
-              <div className="text-red-700 font-bold text-xs line-through">{citation.originalText}</div>
+              <div className="text-red-700 font-bold text-xs line-through break-all">{citation.originalText}</div>
             </div>
             <div className="bg-green-50/50 rounded-2xl p-4 border border-green-100 text-center">
               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest block mb-1">Updated</span>
-              <div className="text-green-700 font-bold text-xs">{citation.supersedingCase!.citation}</div>
+              <div className="text-green-700 font-bold text-xs break-all">{citation.supersedingCase!.citation}</div>
             </div>
           </div>
+
+          <AreaOfLawBadge />
 
           <div className="bg-orange-50/50 rounded-2xl p-5 border border-orange-100">
              <div className="flex gap-4">
@@ -84,12 +76,35 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
                    <p className="text-[11px] text-gray-500 leading-relaxed mt-1">This law was modified by <strong>{citation.supersedingCase!.name}</strong>. Apply the fix to your draft?</p>
                 </div>
              </div>
-             <button 
-               onClick={() => onApplySuperseding?.(citation.id, citation.supersedingCase!.citation, citation.supersedingCase!.name)}
-               className="w-full mt-4 bg-[#0b3a6f] text-white h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-[#092a52] transition-all flex items-center justify-center gap-2"
-             >
-               <Sparkles size={14} /> Insert Current Precedent
-             </button>
+             
+             <div className="flex flex-col gap-2.5 mt-5">
+               <button 
+                 onClick={() => onApplySuperseding?.(citation.id, citation.supersedingCase!.citation, citation.supersedingCase!.name)}
+                 className="w-full bg-[#0b3a6f] text-white h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-[#092a52] transition-all flex items-center justify-center gap-2 shadow-md shadow-[#0b3a6f]/10"
+               >
+                 <Sparkles size={14} /> Insert Current Precedent
+               </button>
+               
+               <button 
+                 onClick={() => {
+                   if (citation.supersedingCase?.uri) {
+                     window.open(citation.supersedingCase.uri, '_blank');
+                   } else {
+                     alert("Reference URI missing for this superseding authority.");
+                   }
+                 }}
+                 className="w-full bg-[#f0f4f8] text-[#0b3a6f] border border-[#d1dae5] h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-[#e2e8f0] transition-all flex items-center justify-center gap-2 shadow-sm"
+               >
+                 <ExternalLink size={14} /> View superseding case details
+               </button>
+
+               <button 
+                 onClick={() => onAcceptCorrection?.(citation.id)}
+                 className="w-full bg-white text-[#22c55e] border border-[#22c55e]/30 h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-green-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+               >
+                 <CheckCircle size={14} /> Apply Correct Citation
+               </button>
+             </div>
           </div>
         </div>
       </div>
@@ -97,28 +112,27 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
   }
 
   return (
-    <div className={`p-4 rounded-2xl border border-[#e6edf4] bg-white hover:border-[#0b3a6f]/20 transition-all cursor-default flex items-start gap-4`}>
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${config.color} ${config.bg} shrink-0`}>
-        <span className="material-symbols-outlined">{config.icon}</span>
-      </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center justify-between">
-           <span className="font-mono text-[11px] font-bold text-[#1f2937]">{citation.originalText}</span>
-           <span className={`text-[9px] font-black uppercase tracking-widest ${config.color}`}>{config.label}</span>
+    <div className={`p-4 rounded-3xl border border-[#e6edf4] bg-white hover:border-[#0b3a6f]/20 transition-all cursor-default flex flex-col gap-4 shadow-sm`}>
+      <div className="flex items-start gap-4">
+        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${config.color} ${config.bg} shrink-0 shadow-sm`}>
+          <span className="material-symbols-outlined text-[24px]">{config.icon}</span>
         </div>
-        <div className="text-sm font-bold text-[#1f2937] leading-tight line-clamp-2">
-          {citation.caseName || (citation.status === 'checking' ? 'Analyzing Precedent...' : 'Case Title Unidentified')}
-        </div>
-        
-        {citation.areaOfLaw && (
-          <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#f39200] uppercase tracking-wider">
-            <span className="material-symbols-outlined text-[14px]">balance</span>
-            {citation.areaOfLaw}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+             <span className="font-mono text-[11px] font-bold text-[#1f2937] truncate max-w-[120px]">{citation.originalText}</span>
+             <span className={`text-[9px] font-black uppercase tracking-[0.15em] ${config.color} whitespace-nowrap ml-2`}>{config.label}</span>
           </div>
-        )}
-
+          <div className="text-[14px] font-extrabold text-[#0b3a6f] leading-snug line-clamp-2">
+            {citation.caseName || (citation.status === 'checking' ? 'Analyzing Precedent...' : 'Case Title Unidentified')}
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <AreaOfLawBadge />
+        
         {citation.reason && (
-          <div className="text-[10px] text-gray-400 font-medium leading-relaxed bg-[#f6f8fb] p-2 rounded-lg mt-2 border border-[#e6edf4]">
+          <div className="w-full text-[11px] text-gray-500 font-medium leading-relaxed bg-[#f6f8fb] p-3 rounded-2xl border border-[#e6edf4]/60">
             {citation.reason}
           </div>
         )}

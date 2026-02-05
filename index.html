@@ -92,6 +92,11 @@
         animation: loading 2s ease-in-out infinite;
       }
 
+      @keyframes marquee {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
+      }
+
       .card-shadow {
         box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
       }
