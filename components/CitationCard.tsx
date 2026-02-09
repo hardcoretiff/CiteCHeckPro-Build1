@@ -1,7 +1,8 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Citation } from '../types';
 import { 
-  ExternalLink, Wand2, Sparkles, CheckCircle, Gavel
+  ExternalLink, Wand2, Sparkles, CheckCircle, Gavel, Copy, Check
 } from 'lucide-react';
 
 interface CitationCardProps {
@@ -12,6 +13,7 @@ interface CitationCardProps {
 }
 
 const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySuperseding, onAcceptCorrection, fullText }) => {
+  const [copied, setCopied] = useState(false);
   const isObsolete = citation.legalStatus === 'overruled' || citation.legalStatus === 'superseded' || citation.legalStatus === 'retracted';
   const isError = citation.status === 'error';
   
@@ -28,6 +30,14 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
       case 'verified': return { icon: 'check_circle', color: 'text-green-500', bg: 'bg-green-50', label: 'VALID LAW' };
       default: return { icon: 'help', color: 'text-gray-400', bg: 'bg-gray-50', label: 'PENDING' };
     }
+  };
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(citation.originalText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const config = getStatusConfig();
@@ -54,9 +64,18 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
 
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100 text-center">
+            <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100 text-center group relative">
               <span className="text-[9px] font-black text-red-500 uppercase tracking-widest block mb-1">Outdated</span>
-              <div className="text-red-700 font-bold text-xs line-through break-all">{citation.originalText}</div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="text-red-700 font-bold text-xs line-through break-all">{citation.originalText}</div>
+                <button 
+                  onClick={handleCopy}
+                  className="p-1.5 bg-white/80 hover:bg-white rounded-lg text-red-400 hover:text-red-600 transition-all shadow-sm opacity-0 group-hover:opacity-100 shrink-0"
+                  title="Copy Original Citation"
+                >
+                  {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                </button>
+              </div>
             </div>
             <div className="bg-green-50/50 rounded-2xl p-4 border border-green-100 text-center">
               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest block mb-1">Updated</span>
@@ -112,14 +131,23 @@ const CitationCard: React.FC<CitationCardProps> = ({ citation, onApplySupersedin
   }
 
   return (
-    <div className={`p-4 rounded-3xl border border-[#e6edf4] bg-white hover:border-[#0b3a6f]/20 transition-all cursor-default flex flex-col gap-4 shadow-sm`}>
+    <div className={`p-4 rounded-3xl border border-[#e6edf4] bg-white hover:border-[#0b3a6f]/20 transition-all cursor-default flex flex-col gap-4 shadow-sm group`}>
       <div className="flex items-start gap-4">
         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${config.color} ${config.bg} shrink-0 shadow-sm`}>
           <span className="material-symbols-outlined text-[24px]">{config.icon}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-             <span className="font-mono text-[11px] font-bold text-[#1f2937] truncate max-w-[120px]">{citation.originalText}</span>
+             <div className="flex items-center gap-2 overflow-hidden">
+                <span className="font-mono text-[11px] font-bold text-[#1f2937] truncate max-w-[120px]">{citation.originalText}</span>
+                <button 
+                  onClick={handleCopy}
+                  className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-[#0b3a6f] transition-all shrink-0"
+                  title="Copy Citation"
+                >
+                  {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                </button>
+             </div>
              <span className={`text-[9px] font-black uppercase tracking-[0.15em] ${config.color} whitespace-nowrap ml-2`}>{config.label}</span>
           </div>
           <div className="text-[14px] font-extrabold text-[#0b3a6f] leading-snug line-clamp-2">

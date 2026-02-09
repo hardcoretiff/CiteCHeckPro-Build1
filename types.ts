@@ -99,4 +99,4 @@ export type CitationFilter = 'all' | 'issues' | 'valid' | 'superseded';
 export type SortOption = 'original' | 'name' | 'status' | 'confidence';
 export type VerificationMode = 'standard' | 'research';
 
-export type ViewState = 'library' | 'editor' | 'recent' | 'starred' | 'settings' | 'historical';
+export type ViewState = 'library' | 'editor' | 'recent' | 'starred' | 'settings' | 'historical' | 'precedent' | 'bluebook' | 'casefinder';
